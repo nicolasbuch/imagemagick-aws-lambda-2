@@ -7,6 +7,7 @@ LIBWEBP_VERSION ?= 0.6.1
 IMAGEMAGICK_VERSION ?= 7.1.1-47
 LCMS2_VERSION ?= 2.14
 LIBXML2_VERSION ?= 2.9.10
+GHOSTSCRIPT_VERSION ?= 10.02.1
 
 TARGET_DIR ?= /opt/
 PROJECT_ROOT = $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
@@ -150,6 +151,26 @@ $(CACHE_DIR)/lib/libxml2.a: $(LIBXML2_SOURCE)
 	make install
 
 
+#GS
+GHOSTSCRIPT_TAG := gs$(subst .,,$(GHOSTSCRIPT_VERSION))
+GHOSTSCRIPT_SOURCE := ghostscript-$(GHOSTSCRIPT_VERSION).tar.gz
+
+$(GHOSTSCRIPT_SOURCE):
+	curl -LO https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/$(GHOSTSCRIPT_TAG)/$(GHOSTSCRIPT_SOURCE)
+
+$(CACHE_DIR)/lib/libgs.a: $(GHOSTSCRIPT_SOURCE)
+	tar xf $(GHOSTSCRIPT_SOURCE)
+	cd ghostscript-$(GHOSTSCRIPT_VERSION) && \
+	./configure \
+		--disable-shared \
+		--enable-static \
+		--prefix=$(CACHE_DIR) \
+		CPPFLAGS=-I$(CACHE_DIR)/include \
+		LDFLAGS=-L$(CACHE_DIR)/lib && \
+	make so && \
+	make install
+
+
 ## ImageMagick
 
 IMAGE_MAGICK_SOURCE=ImageMagick-$(IMAGEMAGICK_VERSION).tar.gz
@@ -165,7 +186,8 @@ LIBS:=$(CACHE_DIR)/lib/libjpeg.a \
 	$(CACHE_DIR)/lib/libbz2.a \
 	$(CACHE_DIR)/lib/libwebp.a \
 	$(CACHE_DIR)/lib/liblcms2.a \
-    $(CACHE_DIR)/lib/libxml2.a
+    $(CACHE_DIR)/lib/libxml2.a \
+    $(CACHE_DIR)/lib/libgs.a
 
 $(TARGET_DIR)/bin/identify: $(IMAGE_MAGICK_SOURCE) $(LIBS)
 	tar xf $<
@@ -181,6 +203,7 @@ $(TARGET_DIR)/bin/identify: $(IMAGE_MAGICK_SOURCE) $(LIBS)
 		--enable-delegate-build \
 		--with-lcms \
 		--with-xml \
+		--with-gslib \
 		--without-modules \
 		--disable-docs \
 		--without-magick-plus-plus \
